@@ -1,5 +1,4 @@
 // src/components/ColoredBalanceTable.jsx
-
 import React from "react";
 import {
     parseISO,
@@ -12,6 +11,14 @@ import {
     isWithinInterval,
 } from "date-fns";
 import { buildMonthWeeks, getMonthName, getOrdinal } from "./buildMonthWeeks";
+
+// Map each spending type to a background color
+const spendingTypeColors = {
+    debt: "#f5c6cb",   // red
+    bill: "#add8e6",   // light blue
+    sub:  "#ffa500",   // orange
+    other:"#e6e6fa",   // light violet
+};
 
 const ColoredBalanceTable = ({ incomeList, spendingList }) => {
     // 1) Gather all dates
@@ -28,7 +35,7 @@ const ColoredBalanceTable = ({ incomeList, spendingList }) => {
     const minDate = allDates.reduce((a, b) => (isBefore(a, b) ? a : b));
     const maxDate = allDates.reduce((a, b) => (isBefore(a, b) ? b : a));
 
-    // 2) Build a list of all (year, month) combos
+    // 2) Build a list of (year, month) combos
     let monthYearArray = [];
     {
         let current = startOfMonth(minDate);
@@ -42,37 +49,35 @@ const ColoredBalanceTable = ({ incomeList, spendingList }) => {
         }
     }
 
-    // 3) For each (year, month), get the "weeks" from buildMonthWeeks
-    //    Then build an array of { key, label, start, end }
+    // 3) Build columns from buildMonthWeeks
     const columns = [];
     monthYearArray.forEach(({ year, month }) => {
         const weeks = buildMonthWeeks(year, month);
         weeks.forEach((w, idx) => {
-            // We'll label them "Week 1", "Week 2", etc. or "Wk #"
             columns.push({
                 key: `${year}-${month}-wk${idx}`,
                 year,
                 month,
                 start: w.start,
                 end: w.end,
-                week: w.week, // <--- carry the numeric week from buildMonthWeeks
+                week: w.week,
             });
         });
     });
 
-    // Build a map from column.key => index
+    // Map column keys to index
     const columnsMap = {};
     columns.forEach((col, index) => {
         columnsMap[col.key] = index;
     });
 
-    // Helper to create zero-filled array
+    // Helper to create zero-filled arrays
     const makeEmptyCols = () => Array(columns.length).fill(0);
 
     // 4) Group income by submissionId => one row per submission
     const incomeGroups = {};
     incomeList.forEach((item) => {
-        const id = item.submissionId || "noId"; // fallback if none
+        const id = item.submissionId || "noId";
         if (!incomeGroups[id]) {
             incomeGroups[id] = [];
         }
@@ -83,7 +88,6 @@ const ColoredBalanceTable = ({ incomeList, spendingList }) => {
         const rowCols = makeEmptyCols();
         groupItems.forEach((item) => {
             const d = parseISO(item.date);
-            // find which column range [start..end] this date belongs to
             columns.forEach((col, colIndex) => {
                 if (isWithinInterval(d, { start: col.start, end: col.end })) {
                     rowCols[colIndex] += item.amount;
@@ -108,6 +112,8 @@ const ColoredBalanceTable = ({ incomeList, spendingList }) => {
 
     const spendingRows = Object.entries(spendingGroups).map(([id, groupItems], idx) => {
         const rowCols = makeEmptyCols();
+        // We'll assume the entire submission uses the same 'type'
+        const type = groupItems[0]?.type || "other";
         groupItems.forEach((item) => {
             const d = parseISO(item.date);
             columns.forEach((col, colIndex) => {
@@ -119,6 +125,7 @@ const ColoredBalanceTable = ({ incomeList, spendingList }) => {
         return {
             label: `Spent #${idx + 1}`,
             columns: rowCols,
+            type, // store the type for colorizing
         };
     });
 
@@ -150,12 +157,6 @@ const ColoredBalanceTable = ({ incomeList, spendingList }) => {
     });
     const monthYearKeys = monthYearArray.map(({ year, month }) => `${year}-${month}`);
 
-    // 8) Render
-    // const monthNames = [
-    //     "January","February","March","April","May","June",
-    //     "July","August","September","October","November","December"
-    // ];
-
     return (
         <div style={{ overflowX: "auto", marginTop: "1rem" }}>
             <table border="1" cellPadding="6" cellSpacing="0">
@@ -164,14 +165,13 @@ const ColoredBalanceTable = ({ incomeList, spendingList }) => {
                 <tr>
                     <th></th>
                     {monthYearKeys.map((myKey) => {
-                        // "2025-1", "2025-2", etc.
                         const [y, m] = myKey.split("-").map(Number);
-                        const colSpan = monthMap[myKey].length; // how many weeks for that month
+                        const colSpan = monthMap[myKey].length;
                         return (
                             <th
                                 key={myKey}
                                 colSpan={colSpan}
-                                style={{textAlign: "center", backgroundColor: "#eee"}}
+                                style={{ textAlign: "center", backgroundColor: "#eee" }}
                             >
                                 {getMonthName(m)} {y}
                             </th>
@@ -182,13 +182,12 @@ const ColoredBalanceTable = ({ incomeList, spendingList }) => {
                 <tr>
                     <th></th>
                     {columns.map((col) => (
-                        <th key={col.key} style={{textAlign: "center"}}>
-                            {getOrdinal(col.week)} {/* Now col.week is a real number */}
+                        <th key={col.key} style={{ textAlign: "center" }}>
+                            {getOrdinal(col.week)}
                         </th>
                     ))}
                 </tr>
                 </thead>
-
                 <tbody>
                 {/* Income rows (green) */}
                 {incomeRows.map((row, idx) => (
@@ -205,22 +204,25 @@ const ColoredBalanceTable = ({ incomeList, spendingList }) => {
                     </tr>
                 ))}
 
-                {/* Spending rows (red) */}
-                {spendingRows.map((row, idx) => (
-                    <tr key={`sp-${idx}`}>
-                        <td>{row.label}</td>
-                        {row.columns.map((val, i) => (
-                            <td
-                                key={i}
-                                style={{ textAlign: "right", backgroundColor: "#f5c6cb" }}
-                            >
-                                {val.toFixed(2)}
-                            </td>
-                        ))}
-                    </tr>
-                ))}
+                {/* Spending rows - color depends on row.type */}
+                {spendingRows.map((row, idx) => {
+                    const bgColor = spendingTypeColors[row.type] || "#f5c6cb";
+                    return (
+                        <tr key={`sp-${idx}`}>
+                            <td>{row.label}</td>
+                            {row.columns.map((val, i) => (
+                                <td
+                                    key={i}
+                                    style={{ textAlign: "right", backgroundColor: bgColor }}
+                                >
+                                    {val.toFixed(2)}
+                                </td>
+                            ))}
+                        </tr>
+                    );
+                })}
 
-                {/* Aggregators */}
+                {/* Aggregator rows */}
                 <tr>
                     <td style={{ fontWeight: "bold", backgroundColor: "#c3e6cb" }}>
                         Total Income
