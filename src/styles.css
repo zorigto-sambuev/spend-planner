@@ -1,0 +1,17 @@
+/* src/styles.css */
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 1rem;
+}
+
+.forms {
+    display: flex;
+    gap: 2rem;
+}
+
+.form-container {
+    border: 1px solid #ccc;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
