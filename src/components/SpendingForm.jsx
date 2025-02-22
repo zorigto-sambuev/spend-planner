@@ -3,10 +3,11 @@ import React, { useState } from "react";
 
 const SpendingForm = ({ setSpendingList }) => {
     const [amount, setAmount] = useState("");
-    const [frequency, setFrequency] = useState("weekly");
+    const [frequency, setFrequency] = useState("one-time"); // default set to one-time
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
     const [repeatTimes, setRepeatTimes] = useState("");
+    const [type, setType] = useState("debt"); // New field: Type
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -22,58 +23,65 @@ const SpendingForm = ({ setSpendingList }) => {
             return;
         }
 
-        // Generate a unique submissionId for this entire spending submission
+        // Generate a unique submissionId for this spending submission.
         const submissionId = Date.now();
 
-        // Convert start and end dates
         const start = new Date(startDate);
         const end = endDate ? new Date(endDate) : null;
-
-        let currentDate = new Date(start);
         let newEntries = [];
 
-        // If "Number of times" is provided, parse it; otherwise, null
-        const timesCount = repeatTimes ? parseInt(repeatTimes, 10) : null;
-        let iterationCount = 0;
-
-        // Helper: increment the date based on frequency
-        const incrementDate = (date, freq) => {
-            const newDate = new Date(date);
-            if (freq === "weekly") {
-                newDate.setDate(newDate.getDate() + 7);
-            } else if (freq === "bi-weekly") {
-                newDate.setDate(newDate.getDate() + 14);
-            } else if (freq === "monthly") {
-                newDate.setMonth(newDate.getMonth() + 1);
-            }
-            return newDate;
-        };
-
-        // Generate entries for each recurrence using the same submissionId
-        while (true) {
-            if (end && currentDate > end) break;
-            if (timesCount && iterationCount >= timesCount) break;
-
+        // If frequency is "one-time", just add a single entry.
+        if (frequency === "one-time") {
             newEntries.push({
-                submissionId, // All entries share this same id
-                date: currentDate.toISOString().split("T")[0],
+                submissionId,
+                date: start.toISOString().split("T")[0],
                 amount: parsedAmount,
                 frequency,
+                type,
             });
+        } else {
+            let currentDate = new Date(start);
+            let iterationCount = 0;
+            let timesCount = repeatTimes ? parseInt(repeatTimes, 10) : null;
 
-            currentDate = incrementDate(currentDate, frequency);
-            iterationCount++;
+            const incrementDate = (date, freq) => {
+                const newDate = new Date(date);
+                if (freq === "weekly") {
+                    newDate.setDate(newDate.getDate() + 7);
+                } else if (freq === "bi-weekly") {
+                    newDate.setDate(newDate.getDate() + 14);
+                } else if (freq === "monthly") {
+                    newDate.setMonth(newDate.getMonth() + 1);
+                }
+                return newDate;
+            };
+
+            while (true) {
+                if (end && currentDate > end) break;
+                if (timesCount && iterationCount >= timesCount) break;
+
+                newEntries.push({
+                    submissionId,
+                    date: currentDate.toISOString().split("T")[0],
+                    amount: parsedAmount,
+                    frequency,
+                    type,
+                });
+
+                currentDate = incrementDate(currentDate, frequency);
+                iterationCount++;
+            }
         }
 
-        // Update the spending list state with the new entries
         setSpendingList((prev) => [...prev, ...newEntries]);
 
         // Reset form fields
         setAmount("");
-        setFrequency("weekly");
+        setFrequency("one-time");
         setStartDate("");
         setEndDate("");
         setRepeatTimes("");
+        setType("debt");
     };
 
     return (
@@ -96,6 +104,7 @@ const SpendingForm = ({ setSpendingList }) => {
                         value={frequency}
                         onChange={(e) => setFrequency(e.target.value)}
                     >
+                        <option value="one-time">One-time</option>
                         <option value="weekly">Weekly</option>
                         <option value="bi-weekly">Bi-Weekly</option>
                         <option value="monthly">Monthly</option>
@@ -127,6 +136,16 @@ const SpendingForm = ({ setSpendingList }) => {
                         value={repeatTimes}
                         onChange={(e) => setRepeatTimes(e.target.value)}
                     />
+                </div>
+
+                <div>
+                    <label>Type:</label>
+                    <select value={type} onChange={(e) => setType(e.target.value)}>
+                        <option value="debt">Debt</option>
+                        <option value="bill">Bill</option>
+                        <option value="sub">Sub</option>
+                        <option value="other">Other</option>
+                    </select>
                 </div>
 
                 <button type="submit">Add Spending</button>
