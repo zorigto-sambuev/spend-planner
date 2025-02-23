@@ -18,7 +18,7 @@ const typeColors = {
     income: "#c3e6cb",  // green for income
     debt:   "#f5c6cb",  // red/pink
     bill:   "#add8e6",  // light blue
-    sub:    "#ffa500",  // orange
+    sub:    "#F0E68C",  // khaki
     other:  "#e6e6fa",  // light violet
 };
 
@@ -213,7 +213,14 @@ const ColoredBalanceTable = ({ incomeList, spendingList }) => {
             }
         });
     });
-    const balanceCols = totalIncomeCols.map((incVal, i) => incVal - totalSpentCols[i]);
+    // netWeekCols = totalIncomeCols[i] - totalSpentCols[i]
+    const netWeekCols = totalIncomeCols.map((inc, i) => inc - totalSpentCols[i]);
+    // runningBalanceCols = cumulative sum of netWeekCols
+    let runningTotal = 0;
+    const runningBalanceCols = netWeekCols.map((netVal) => {
+        runningTotal += netVal;
+        return runningTotal;
+    });
 
     // 7.1) Hide zero rows
     allRows = allRows.filter((row) => {
@@ -239,9 +246,6 @@ const ColoredBalanceTable = ({ incomeList, spendingList }) => {
         return aIdx - bIdx;
     });
 
-    // ------------------------------------------------------------------
-    // RENDER
-    // ------------------------------------------------------------------
     return (
         <div style={{ overflowX: "auto", marginTop: "1rem" }}>
             <table border="1" cellPadding="6" cellSpacing="0">
@@ -283,7 +287,7 @@ const ColoredBalanceTable = ({ incomeList, spendingList }) => {
                             {row.columns.map((val, i) => {
                                 const bgColor = val === 0 ? "#fff" : (typeColors[row.type] || "#f5c6cb");
                                 return (
-                                    <td key={i} style={{ textAlign: "right", backgroundColor: bgColor }}>
+                                    <td key={i} style={{textAlign: "right", backgroundColor: bgColor}}>
                                         {val.toFixed(2)}
                                     </td>
                                 );
@@ -294,7 +298,7 @@ const ColoredBalanceTable = ({ incomeList, spendingList }) => {
 
                 {/* Aggregator rows: total income, total spent, balance */}
                 <tr>
-                    <td style={{ fontWeight: "bold", backgroundColor: "#c3e6cb" }}>
+                    <td style={{fontWeight: "bold", backgroundColor: "#00FA9A"}}>
                         Total Income
                     </td>
                     {totalIncomeCols.map((val, i) => (
@@ -302,7 +306,7 @@ const ColoredBalanceTable = ({ incomeList, spendingList }) => {
                             key={i}
                             style={{
                                 textAlign: "right",
-                                backgroundColor: val === 0 ? "#fff" : "#c3e6cb",
+                                backgroundColor: val === 0 ? "#fff" : "#00FA9A",
                             }}
                         >
                             {val.toFixed(2)}
@@ -310,7 +314,7 @@ const ColoredBalanceTable = ({ incomeList, spendingList }) => {
                     ))}
                 </tr>
                 <tr>
-                    <td style={{ fontWeight: "bold", backgroundColor: "#f5c6cb" }}>
+                    <td style={{fontWeight: "bold", backgroundColor: "#FA8072"}}>
                         Total Spent
                     </td>
                     {totalSpentCols.map((val, i) => (
@@ -318,21 +322,37 @@ const ColoredBalanceTable = ({ incomeList, spendingList }) => {
                             key={i}
                             style={{
                                 textAlign: "right",
-                                backgroundColor: val === 0 ? "#fff" : "#f5c6cb",
+                                backgroundColor: val === 0 ? "#fff" : "#FA8072",
                             }}
                         >
                             {val.toFixed(2)}
                         </td>
                     ))}
                 </tr>
+                {/* Net Week row */}
                 <tr>
-                    <td style={{ fontWeight: "bold" }}>Balance</td>
-                    {balanceCols.map((val, i) => (
+                    <td style={{fontWeight: "bold", backgroundColor: "#ff6ec7"}}>Net Week</td>
+                    {netWeekCols.map((val, i) => (
                         <td
                             key={i}
                             style={{
                                 textAlign: "right",
-                                backgroundColor: val === 0 ? "#fff" : "",
+                                backgroundColor: val === 0 ? "#fff" : "#ff6ec7",
+                            }}
+                        >
+                            {val.toFixed(2)}
+                        </td>
+                    ))}
+                </tr>
+                {/* Balance row (running total of net weeks) */}
+                <tr>
+                    <td style={{fontWeight: "bold", backgroundColor: "#40E0D0"}}>Balance</td>
+                    {runningBalanceCols.map((val, i) => (
+                        <td
+                            key={i}
+                            style={{
+                                textAlign: "right",
+                                backgroundColor: val === 0 ? "#fff" : "#40E0D0",
                             }}
                         >
                             {val.toFixed(2)}
